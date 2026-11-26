@@ -193,37 +193,43 @@ h2 { font-size: clamp(1.85rem, 4vw, 3rem); line-height: 1.16; font-weight: 760; 
   list-style: none;
 }
 .banned-hero {
-  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr;
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 0.25rem;
   background: var(--panel);
 }
-.banned-hero img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+.hero-portrait { position: relative; }
+.hero-portrait img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; }
 .ban-mark {
   position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
+  inset: 0;
   display: grid;
-  width: 1.45rem;
-  height: 1.45rem;
   place-items: center;
-  border: 1px solid #ff615f;
-  border-radius: 50%;
-  color: #ff615f;
-  background: #1b1013;
-  font-size: 1.15rem;
-  font-weight: 750;
-  line-height: 1;
 }
+.ban-mark::before, .ban-mark::after {
+  content: '';
+  grid-area: 1 / 1;
+  width: min(45%, 3rem);
+  height: 0.23rem;
+  border-radius: 1rem;
+  background: #ff615f;
+  box-shadow: 0 0 0 1px #2b0d12, 0 0 0.4rem #2b0d12;
+}
+.ban-mark::before { transform: rotate(45deg); }
+.ban-mark::after { transform: rotate(-45deg); }
 .hero-name {
-  display: block;
+  display: grid;
+  place-items: center;
+  min-block-size: calc(2lh + 0.9rem);
   padding: 0.45rem 0.5rem;
   color: var(--ink);
   font-size: 0.875rem;
   font-weight: 650;
   line-height: 1.3;
+  text-align: center;
   overflow-wrap: anywhere;
 }
 .footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 0.875rem; }
