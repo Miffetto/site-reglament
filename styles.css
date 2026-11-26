@@ -373,6 +373,10 @@ h2 { font-size: clamp(1.85rem, 4vw, 3rem); line-height: 1.16; font-weight: 760; 
   pointer-events: none;
 }
 .match-card h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
   margin: 0;
   padding: 0.3rem 0.65rem;
   border-bottom: 1px solid var(--line);
@@ -380,6 +384,19 @@ h2 { font-size: clamp(1.85rem, 4vw, 3rem); line-height: 1.16; font-weight: 760; 
   font-size: 0.875rem;
   font-weight: 650;
 }
+.match-reset {
+  padding: 0.15rem 0.3rem;
+  border: 0;
+  border-radius: 0.2rem;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.match-reset:hover { background: #ffffff10; }
+.match-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.match-reset[aria-disabled="true"] { cursor: wait; }
 .match-teams li {
   display: flex;
   align-items: baseline;

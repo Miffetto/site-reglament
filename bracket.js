@@ -18,8 +18,16 @@ const matches = [...board.querySelectorAll(".match-card")].map((card) => {
     });
     return teamId;
   }) : null;
+  const reset = document.createElement("button");
+  reset.type = "button";
+  reset.className = "match-reset";
+  reset.dataset.matchId = id;
+  reset.textContent = "Сбросить";
+  reset.setAttribute("aria-label", `Сбросить результат матча ${id}`);
   return {
     id,
+    heading: card.querySelector("h3"),
+    reset,
     slots,
     openingTeams,
     placeholders: openingTeams ? [] : slots.map((slot) => slot.firstElementChild.cloneNode(true)),
@@ -62,7 +70,7 @@ function acceptState(value) {
   }
 }
 
-async function sendWinner(payload, session) {
+async function sendResult(payload, session) {
   try {
     const result = await request(payload, session);
     return result.status < 500 ? result : null;
@@ -71,31 +79,37 @@ async function sendWinner(payload, session) {
   }
 }
 
-async function confirmWinner({ matchId, teamId, revision }) {
+async function confirmResult({ matchId, teamId, revision }) {
   try {
     const result = await request(undefined, undefined, 3500);
     if (result.status === 200) acceptState(result.body);
   } catch {
     // The original revision still prevents a retry from overwriting newer results.
   }
-  if (state.winners[matchId] === teamId) return { status: 200, body: state };
+  if ((state.winners[matchId] ?? null) === teamId) return { status: 200, body: state };
   if (state.revision !== revision) return { status: 409, body: state };
   return null;
 }
 
-async function saveWinner(payload, session) {
-  const result = await sendWinner(payload, session);
+async function saveResult(payload, session) {
+  const result = await sendResult(payload, session);
   if (result) return result;
 
   showNotice("Связь прервалась. Проверяем, сохранился ли результат…");
-  return await confirmWinner(payload) ?? await sendWinner(payload, session) ?? await confirmWinner(payload);
+  return await confirmResult(payload) ?? await sendResult(payload, session) ?? await confirmResult(payload);
 }
 
 function render() {
   const active = document.activeElement;
   const winners = state?.winners ?? {};
   for (const match of matches) {
-    const { id, slots, openingTeams, placeholders } = match;
+    const { id, heading, reset, slots, openingTeams, placeholders } = match;
+    if (token && winners[id]) {
+      if (!reset.isConnected) heading.append(reset);
+      reset.setAttribute("aria-disabled", String(saving));
+    } else {
+      reset.remove();
+    }
     const participants = openingTeams ?? [winners[2 * id - 17], winners[2 * id - 16]];
     const editable = Boolean(token && state && participants.every((team) => teams.has(team)));
     slots.forEach((slot, index) => {
@@ -135,7 +149,7 @@ function render() {
       slot.replaceChildren(button);
     });
   }
-  if (active?.classList.contains("team-select") && !active.isConnected) {
+  if (active?.matches(".team-select, .match-reset") && !active.isConnected) {
     const { matchId, teamId } = active.dataset;
     const card = document.getElementById(`match-${matchId}`);
     (card.querySelector(`.team-select[data-team-id="${teamId}"]`) ?? card).focus({ preventScroll: true });
@@ -209,47 +223,51 @@ logoutButton.addEventListener("click", async () => {
 });
 
 board.addEventListener("click", async (event) => {
-  const button = event.target.closest(".team-select");
+  const button = event.target.closest(".team-select, .match-reset");
   if (!button || !token || !state || saving) return;
   const matchId = Number(button.dataset.matchId);
-  const teamId = Number(button.dataset.teamId);
-  if (state.winners[matchId] === teamId) return;
+  const isReset = button.classList.contains("match-reset");
+  const teamId = isReset ? null : Number(button.dataset.teamId);
+  if ((state.winners[matchId] ?? null) === teamId) return;
 
-  let next = matchId;
-  while (next < 15) {
+  let hasDependentResult = false;
+  for (let next = matchId; next < 15 && !hasDependentResult;) {
     next = 8 + Math.ceil(next / 2);
-    if (state.winners[next]) {
-      if (!window.confirm("Исправить победителя? Результаты следующих матчей этой ветки будут сброшены.")) return;
-      break;
-    }
+    hasDependentResult = Boolean(state.winners[next]);
+  }
+  if (isReset || hasDependentResult) {
+    const prompt = isReset ? `Сбросить результат матча ${matchId}?` : "Исправить победителя?";
+    const detail = hasDependentResult ? " Результаты зависимых матчей тоже будут сброшены." : "";
+    if (!window.confirm(prompt + detail)) return;
   }
 
   saving = true;
   logoutButton.disabled = true;
-  showNotice("Сохраняем результат…");
+  showNotice(isReset ? "Сбрасываем результат…" : "Сохраняем результат…");
   render();
   try {
-    const result = await saveWinner({ action: "winner", matchId, teamId, revision: state.revision }, token);
+    const result = await saveResult({ action: isReset ? "reset" : "winner", matchId, teamId, revision: state.revision }, token);
     if (!result) {
-      showNotice("Не удалось подтвердить сохранение. Если победитель не отмечен, выбери его снова.");
+      showNotice("Не удалось подтвердить изменение. Проверь результат в сетке и при необходимости повтори действие.");
       return;
     }
     const { status, body } = result;
     if (status === 200 || status === 409) {
       acceptState(body);
-      showNotice(state.winners[matchId] === teamId
-        ? `Результат матча ${matchId} сохранён.`
-        : "Сетка уже изменилась. Проверь участников и выбери победителя снова.");
+      const success = `Результат матча ${matchId} ${isReset ? "сброшен" : "сохранён"}.`;
+      showNotice((state.winners[matchId] ?? null) === teamId
+        ? success
+        : "Сетка уже изменилась. Проверь результат матча и повтори действие.");
     } else if (status === 401) {
       setOrganizer(null);
       showNotice("Сессия истекла. Введи код ещё раз внизу страницы.");
     } else if (status === 422) {
       showNotice("Дождись результатов предыдущих матчей и проверь участников.");
     } else {
-      showNotice("Не удалось сохранить результат. Попробуй ещё раз.");
+      showNotice("Не удалось изменить результат. Попробуй ещё раз.");
     }
   } catch {
-    showNotice("Не удалось подтвердить сохранение. Если победитель не отмечен, выбери его снова.");
+    showNotice("Не удалось подтвердить изменение. Проверь результат в сетке и при необходимости повтори действие.");
   } finally {
     saving = false;
     logoutButton.disabled = false;

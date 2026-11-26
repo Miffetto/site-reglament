@@ -11,7 +11,7 @@ const responseHeaders = {
 };
 
 type BracketRequest = {
-  p_action: "read" | "login" | "winner" | "logout";
+  p_action: "read" | "login" | "winner" | "logout" | "reset";
   p_code?: string;
   p_token?: string;
   p_match_id?: number;
@@ -92,15 +92,17 @@ Deno.serve(async (request: Request): Promise<Response> => {
     return json({ error: "session_expired" }, 401);
   }
   if (payload.action === "logout") return bracketRequest({ p_action: "logout", p_token: token });
-  if (payload.action !== "winner" || !isIntegerInRange(payload.matchId, 1, 15) ||
-    !isIntegerInRange(payload.teamId, 1, 16) || !isIntegerInRange(payload.revision, 0, 2147483647)) {
+  if (!isIntegerInRange(payload.matchId, 1, 15) || !isIntegerInRange(payload.revision, 0, 2147483647)) {
     return json({ error: "invalid_request" }, 400);
   }
-  return bracketRequest({
-    p_action: "winner",
+  const match = {
     p_token: token,
     p_match_id: payload.matchId,
-    p_team_id: payload.teamId,
     p_revision: payload.revision,
-  });
+  };
+  if (payload.action === "reset") return bracketRequest({ ...match, p_action: "reset" });
+  if (payload.action === "winner" && isIntegerInRange(payload.teamId, 1, 16)) {
+    return bracketRequest({ ...match, p_action: "winner", p_team_id: payload.teamId });
+  }
+  return json({ error: "invalid_request" }, 400);
 });
