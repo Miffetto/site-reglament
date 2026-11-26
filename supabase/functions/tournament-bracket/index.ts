@@ -64,7 +64,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
   if (request.method === "GET") return bracketRequest({ p_action: "read" });
   if (request.method !== "POST") return json({ error: "invalid_request" }, 405);
   if (Number(request.headers.get("Content-Length")) > 1024) return json({ error: "invalid_request" }, 413);
-  if (request.headers.get("Content-Type")?.split(";")[0].trim() !== "application/json") {
+  const contentType = request.headers.get("Content-Type")?.split(";")[0].trim();
+  if (contentType !== "text/plain" && contentType !== "application/json") {
     return json({ error: "invalid_request" }, 415);
   }
 
@@ -84,8 +85,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
     return bracketRequest({ p_action: "login", p_code: payload.code });
   }
 
-  const token = request.headers.get("Authorization")?.match(/^Bearer ([0-9a-f]{64})$/)?.[1];
-  if (!token) return json({ error: "session_expired" }, 401);
+  const token = contentType === "text/plain"
+    ? payload.session
+    : request.headers.get("Authorization")?.match(/^Bearer ([0-9a-f]{64})$/)?.[1];
+  if (typeof token !== "string" || !/^[0-9a-f]{64}$/.test(token)) {
+    return json({ error: "session_expired" }, 401);
+  }
   if (payload.action === "logout") return bracketRequest({ p_action: "logout", p_token: token });
   if (payload.action !== "winner" || !isIntegerInRange(payload.matchId, 1, 15) ||
     !isIntegerInRange(payload.teamId, 1, 16) || !isIntegerInRange(payload.revision, 0, 2147483647)) {

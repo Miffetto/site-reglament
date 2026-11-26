@@ -37,16 +37,15 @@ function showNotice(message = "") {
   notice.hidden = !message;
 }
 
-async function request(payload, session) {
+async function request(payload, session, timeout = 9000) {
   const response = await fetch(api, {
     method: payload ? "POST" : "GET",
-    headers: payload ? {
-      "Content-Type": "application/json",
-      ...(session && { Authorization: `Bearer ${session}` }),
-    } : undefined,
-    body: payload ? JSON.stringify(payload) : undefined,
+    // A plain-text JSON body avoids an extra CORS request before each edit.
+    headers: payload ? { "Content-Type": "text/plain;charset=UTF-8" } : undefined,
+    body: payload ? JSON.stringify({ ...payload, ...(session && { session }) }) : undefined,
+    credentials: "omit",
     cache: "no-store",
-    signal: AbortSignal.timeout(9000),
+    signal: AbortSignal.timeout(timeout),
   });
   return { status: response.status, body: await response.json() };
 }
@@ -61,6 +60,35 @@ function acceptState(value) {
     state = { revision: value.revision, winners: value.winners };
     render();
   }
+}
+
+async function sendWinner(payload, session) {
+  try {
+    const result = await request(payload, session);
+    return result.status < 500 ? result : null;
+  } catch {
+    return null;
+  }
+}
+
+async function confirmWinner({ matchId, teamId, revision }) {
+  try {
+    const result = await request(undefined, undefined, 3500);
+    if (result.status === 200) acceptState(result.body);
+  } catch {
+    // The original revision still prevents a retry from overwriting newer results.
+  }
+  if (state.winners[matchId] === teamId) return { status: 200, body: state };
+  if (state.revision !== revision) return { status: 409, body: state };
+  return null;
+}
+
+async function saveWinner(payload, session) {
+  const result = await sendWinner(payload, session);
+  if (result) return result;
+
+  showNotice("Связь прервалась. Проверяем, сохранился ли результат…");
+  return await confirmWinner(payload) ?? await sendWinner(payload, session) ?? await confirmWinner(payload);
 }
 
 function render() {
@@ -201,23 +229,27 @@ board.addEventListener("click", async (event) => {
   showNotice("Сохраняем результат…");
   render();
   try {
-    const { status, body } = await request({ action: "winner", matchId, teamId, revision: state.revision }, token);
-    if (status === 200) {
+    const result = await saveWinner({ action: "winner", matchId, teamId, revision: state.revision }, token);
+    if (!result) {
+      showNotice("Не удалось подтвердить сохранение. Если победитель не отмечен, выбери его снова.");
+      return;
+    }
+    const { status, body } = result;
+    if (status === 200 || status === 409) {
       acceptState(body);
-      showNotice(`Результат матча ${matchId} сохранён.`);
-    } else if (status === 409) {
-      acceptState(body);
-      showNotice("Сетка уже изменилась. Проверь участников и выбери победителя снова.");
+      showNotice(state.winners[matchId] === teamId
+        ? `Результат матча ${matchId} сохранён.`
+        : "Сетка уже изменилась. Проверь участников и выбери победителя снова.");
     } else if (status === 401) {
       setOrganizer(null);
       showNotice("Сессия истекла. Введи код ещё раз внизу страницы.");
     } else if (status === 422) {
       showNotice("Дождись результатов предыдущих матчей и проверь участников.");
     } else {
-      showNotice("Не удалось подтвердить сохранение. Сетка обновляется автоматически.");
+      showNotice("Не удалось сохранить результат. Попробуй ещё раз.");
     }
   } catch {
-    showNotice("Не удалось подтвердить сохранение. Сетка обновляется автоматически.");
+    showNotice("Не удалось подтвердить сохранение. Если победитель не отмечен, выбери его снова.");
   } finally {
     saving = false;
     logoutButton.disabled = false;
