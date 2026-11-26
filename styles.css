@@ -126,18 +126,32 @@ h2 { font-size: clamp(1.85rem, 4vw, 3rem); line-height: 1.16; font-weight: 760; 
 }
 .event-card h3 { margin: 0; font-size: 1rem; }
 .event-card p { color: var(--muted); font-size: 0.875rem; }
+.broadcast-card {
+  border-color: #3a2c50;
+  background: linear-gradient(110deg, #251b36, var(--panel) 76%);
+}
+.stream-channel { display: flex; align-items: center; gap: 0.85rem; }
+.stream-avatar {
+  display: block;
+  flex: none;
+  border: 2px solid #ae82f2;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.stream-channel h3 { font-size: 1.15rem; line-height: 1.25; }
 .stream-link {
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
-  padding: 0.45rem 0.85rem;
-  border: 1px solid var(--accent);
+  padding: 0.5rem 1rem;
   border-radius: 0.25rem;
-  color: var(--accent);
+  color: #1c102c;
+  background: #c5a5ff;
   font-size: 0.875rem;
-  font-weight: 700;
+  font-weight: 750;
 }
-.stream-link:hover { background: var(--accent); color: #201313; }
+.stream-link:hover { background: #d7beff; }
+.stream-link:focus-visible { outline-color: #c5a5ff; }
 .sponsor-card { justify-content: flex-start; background: #090a0c; }
 .sponsor-card:hover { border-color: var(--accent); }
 .sponsor-logo { display: block; flex: none; }
@@ -259,6 +273,10 @@ h2 { font-size: clamp(1.85rem, 4vw, 3rem); line-height: 1.16; font-weight: 760; 
   .facts dd { margin-top: 0; }
   .rules { padding-bottom: 2.75rem; }
   .ban-roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 26rem) {
+  .stream-link { width: 100%; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
