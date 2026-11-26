@@ -1,0 +1,4 @@
+project_id = "lucky-league"
+
+[functions.tournament-bracket]
+verify_jwt = false

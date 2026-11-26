@@ -3,18 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Сетка турнира по Dota 2 — 16 команд, от 1/8 финала до финала.">
+  <meta name="description" content="Сетка LuckyLeague по Dota 2 — 16 команд, от 1/8 финала до финала.">
   <meta name="theme-color" content="#101114">
-  <title>Сетка турнира — Мид 2×2</title>
+  <title>Турнирная сетка — LuckyLeague</title>
   <link rel="icon" href="./assets/mark.png" type="image/png">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=lucky-league">
+  <script type="module" src="./bracket.js"></script>
 </head>
 <body id="top">
   <a class="skip-link" href="#content">К содержанию</a>
   <header class="header">
     <div class="container header-inner">
-      <a class="wordmark" href="./" aria-label="Мид 2 на 2, главная страница">
-        <span class="mark" aria-hidden="true"></span>Мид <span class="accent">2×2</span>
+      <a class="wordmark" href="./" aria-label="LuckyLeague, главная страница">
+        <span class="mark" aria-hidden="true"></span><span>Lucky<span class="accent">League</span></span>
       </a>
       <nav aria-label="Навигация по сайту">
         <a href="./#format">Формат</a>
@@ -31,6 +32,8 @@
         <h1>Турнирная сетка</h1>
         <p>Пары первого раунда составлены по близости суммарного ПТС. Победитель каждого матча проходит дальше.</p>
       </div>
+
+      <p class="bracket-notice" id="bracket-notice" role="status" hidden></p>
 
       <nav class="bracket-mobile-nav" aria-label="Перейти к раунду">
         <p>Листай сетку вправо или выбери раунд.</p>
@@ -252,12 +255,24 @@
           </section>
         </div>
       </div>
+      <section class="bracket-admin" aria-labelledby="bracket-admin-title">
+        <h2 id="bracket-admin-title">Для организатора</h2>
+        <form id="bracket-login" method="post">
+          <label for="bracket-code">Секретный код</label>
+          <div class="bracket-login-fields">
+            <input id="bracket-code" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{5}" maxlength="5" required>
+            <button type="submit" disabled>Войти</button>
+          </div>
+        </form>
+        <button type="button" id="bracket-logout" hidden>Выйти</button>
+        <p id="bracket-login-status" role="status"></p>
+      </section>
     </div>
   </main>
 
   <footer class="footer">
     <div class="container footer-inner">
-      <span>Мид 2×2 <span class="footer-divider">/</span> Dota 2</span>
+      <span>LuckyLeague <span class="footer-divider">/</span> Dota 2</span>
       <a href="#top">К началу страницы</a>
     </div>
   </footer>
